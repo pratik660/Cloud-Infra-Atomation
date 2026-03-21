@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>DevOps Dashboard</title>
+
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      text-align: center;
+    }
+
+    .container {
+      margin-top: 50px;
+    }
+
+    button {
+      margin: 10px;
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .create { background: #22c55e; }
+    .status { background: #3b82f6; }
+    .destroy { background: #ef4444; }
+
+    .card {
+      margin-top: 30px;
+      padding: 20px;
+      background: #1e293b;
+      border-radius: 10px;
+      display: inline-block;
+      min-width: 300px;
+    }
+
+    h1 { color: #38bdf8; }
+  </style>
+</head>
+
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+
+function App(){
+
+const [status,setStatus]=React.useState("Unknown")
+const [ip,setIP]=React.useState("")
+
+const createInfra=async()=>{
+  try{
+    setStatus("Creating...")
+
+    const res=await fetch("http://localhost:5000/create-infra",{method:"POST"})
+    const data=await res.json()
+
+    setStatus(data.status)
+    setIP(data.ip)
+
+  }catch(err){
+    setStatus("Error")
+  }
+}
+
+const destroyInfra=async()=>{
+  try{
+    setStatus("Destroying...")
+
+    const res=await fetch("http://localhost:5000/destroy-infra",{method:"POST"})
+    const data=await res.json()
+
+    setStatus(data.status)
+    setIP("")
+
+  }catch(err){
+    setStatus("Error")
+  }
+}
+
+const checkStatus=async()=>{
+  try{
+    setStatus("Checking...")
+
+    const res=await fetch("http://localhost:5000/status")
+    const data=await res.json()
+
+    setStatus(data.status)
+    setIP(data.ip)
+
+  }catch(err){
+    setStatus("Error")
+  }
+}
+
+return(
+<div className="container">
+
+<h1>🚀 DevOps Infrastructure Dashboard</h1>
+
+<button className="create" onClick={createInfra}>Create</button>
+<button className="status" onClick={checkStatus}>Status</button>
+<button className="destroy" onClick={destroyInfra}>Destroy</button>
+
+<div className="card">
+<h2>Status: {status}</h2>
+<h3>IP: {ip || "N/A"}</h3>
+</div>
+
+</div>
+)
+
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"))
+root.render(<App />)
+
+</script>
+
+</body>
+</html>
