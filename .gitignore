@@ -7,10 +7,7 @@ node_modules/
 *.tfstate.backup
 .terraform.lock.hcl
 
-# Env
-.env
-.aws/
-
-# OS
-.DS_Store
-Thumbs.db
+# Secrets
+*.pem
+*.key
+*.tfvars
