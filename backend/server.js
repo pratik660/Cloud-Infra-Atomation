@@ -6,127 +6,154 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-let status = "Stopped"
-let ip = ""
+// ✅ YOUR ACTUAL TERRAFORM PATH (FIXED)
+const terraformExe = `"C:\\Users\\shelk\\Downloads\\terraform_1.12.0_windows_386\\terraform.exe"`
+// 📁 Terraform folder
+const tfPath = "../terraform"
 
-// 🚀 CREATE INFRA
-app.post("/create-infra", (req, res) => {
+console.log("📁 Terraform Folder:", tfPath)
+console.log("⚙️ Terraform Executable:", terraformExe)
 
-  console.log("🚀 Create Infra API HIT")
 
-  status = "Creating..."
+// 🔥 COMMON RUNNER FUNCTION
+const runTerraform = (cmd, res, successMsg) => {
 
-  exec("terraform apply -auto-approve", { cwd: "../terraform" }, (err, stdout, stderr) => {
+  const fullCmd = `${terraformExe} ${cmd}`
+
+  console.log("\n🚀 Running Command:\n", fullCmd)
+
+  exec(fullCmd, { cwd: tfPath }, (err, stdout, stderr) => {
 
     console.log("📤 STDOUT:\n", stdout)
     console.log("⚠️ STDERR:\n", stderr)
 
     if (err) {
-      console.log("❌ ERROR:", err)
-      status = "Error"
+      console.log("❌ ERROR:", err.message)
 
       return res.json({
-        status: status,
-        ip: ""
+        status: "Error",
+        error: stderr || err.message
       })
     }
 
-    // ✅ Always fetch IP after apply
-    exec("terraform output -raw instance_ip", { cwd: "../terraform" }, (err2, stdout2) => {
+    // ✅ Fetch outputs
+    exec(`${terraformExe} output -json`, { cwd: tfPath }, (e, out) => {
 
-      if (err2) {
-        console.log("❌ Output Error:", err2)
-
-        status = "Running"
+      if (e) {
         return res.json({
-          status: status,
-          ip: "Check AWS Console"
+          status: successMsg,
+          ip: "",
+          bucket: "",
+          vpc: ""
         })
       }
 
-      ip = stdout2.trim()
-      status = "Running"
-
-      console.log("🌐 Instance IP:", ip)
+      const data = JSON.parse(out || "{}")
 
       res.json({
-        status: status,
-        ip: ip
+        status: successMsg,
+        ip: data.instance_ip?.value || "",
+        bucket: data.bucket_name?.value || "",
+        vpc: data.vpc_id?.value || ""
       })
-
     })
-
   })
+}
+
+
+// 🌐 CREATE VPC
+app.post("/create-vpc", (req, res) => {
+  runTerraform(
+    "apply -target=aws_vpc.main -target=aws_subnet.subnet -target=aws_internet_gateway.igw -target=aws_route_table.rt -target=aws_route.route -target=aws_route_table_association.rta -auto-approve",
+    res,
+    "VPC Created"
+  )
 })
 
 
-// 📊 CHECK STATUS (REAL DATA)
+// 🪣 CREATE S3
+app.post("/create-s3", (req, res) => {
+  runTerraform(
+    "apply -target=aws_s3_bucket.bucket -auto-approve",
+    res,
+    "S3 Bucket Created"
+  )
+})
+
+
+// 🖥️ CREATE EC2
+app.post("/create-ec2", (req, res) => {
+  runTerraform(
+    "apply -auto-approve",
+    res,
+    "EC2 Created"
+  )
+})
+
+
+// ⚡ FULL INFRA
+app.post("/create-full", (req, res) => {
+  runTerraform(
+    "apply -auto-approve",
+    res,
+    "Full Infrastructure Created"
+  )
+})
+
+
+// 💣 DESTROY ALL
+app.post("/destroy-all", (req, res) => {
+  runTerraform(
+    "destroy -auto-approve",
+    res,
+    "Infrastructure Destroyed"
+  )
+})
+
+
+// 📊 STATUS
 app.get("/status", (req, res) => {
 
-  console.log("📊 Status API HIT")
+  console.log("📊 Checking Status...")
 
-  exec("terraform output -raw instance_ip", { cwd: "../terraform" }, (err, stdout) => {
+  exec(`${terraformExe} output -json`, { cwd: tfPath }, (err, stdout) => {
 
     if (err) {
-      console.log("⚠️ Status Error:", err)
-
       return res.json({
         status: "Not Created",
-        ip: ""
+        ip: "",
+        bucket: "",
+        vpc: ""
       })
     }
 
-    const ip = stdout.trim()
+    const data = JSON.parse(stdout || "{}")
 
     res.json({
       status: "Running",
-      ip: ip
+      ip: data.instance_ip?.value || "",
+      bucket: data.bucket_name?.value || "",
+      vpc: data.vpc_id?.value || ""
     })
-
   })
-
 })
 
 
-// 💣 DESTROY INFRA
-app.post("/destroy-infra", (req, res) => {
+// 🧪 CHECK TERRAFORM
+app.get("/check-tf", (req, res) => {
 
-  console.log("💣 Destroy Infra API HIT")
-
-  status = "Destroying..."
-
-  exec("terraform destroy -auto-approve", { cwd: "../terraform" }, (err, stdout, stderr) => {
-
-    console.log("📤 STDOUT:\n", stdout)
-    console.log("⚠️ STDERR:\n", stderr)
+  exec(`${terraformExe} version`, (err, stdout) => {
 
     if (err) {
-      console.log("❌ ERROR:", err)
-      status = "Error"
-
-      return res.json({
-        status: status,
-        ip: ""
-      })
+      return res.send("❌ Terraform NOT working\n" + err.message)
     }
 
-    // ✅ Reset state after destroy
-    status = "Stopped"
-    ip = ""
-
-    console.log("🗑️ Infrastructure Destroyed")
-
-    res.json({
-      status: status,
-      ip: ip
-    })
-
+    res.send("✅ Terraform Working:\n\n" + stdout)
   })
-
 })
 
 
-// 🟢 SERVER START
+// 🟢 START SERVER
 app.listen(5000, () => {
-  console.log("✅ Server running on port 5000")
+  console.log("✅ Server running on http://localhost:5000")
 })
