@@ -4,33 +4,30 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
   terraform:
-    name: Terraform Validation
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - name: Checkout Repo
+        uses: actions/checkout@v3
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Format Check
-        run: terraform fmt -check -recursive
-        working-directory: terraform
+        uses: hashicorp/setup-terraform@v2
 
       - name: Terraform Init
-        run: terraform init -backend=false
-        working-directory: terraform
+        working-directory: ./terraform
+        run: terraform init
 
-      - name: Terraform Plan
-        run: terraform plan
+      - name: Terraform Format Check
+        working-directory: ./terraform
+        run: terraform fmt -check -recursive
 
       - name: Terraform Validate
+        working-directory: ./terraform
         run: terraform validate
-        working-directory: terraform
+
+      - name: Terraform Plan
+        working-directory: ./terraform
+        run: terraform plan
