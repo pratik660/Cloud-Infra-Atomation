@@ -28,6 +28,9 @@ jobs:
         run: terraform init -backend=false
         working-directory: terraform
 
+      - name: Terraform Plan
+        run: terraform plan
+
       - name: Terraform Validate
         run: terraform validate
         working-directory: terraform
